@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>今晚吃什么</title>
+    <!-- TailwindCSS 3.0+ 通过CDN引入 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 图标库 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // 配置Tailwind主题
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                    },
+                    animation: {
+                        'spin-slow': 'spin 3s linear infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                    },
+                    transitionProperty: {
+                        'height': 'height',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer components {
+            .btn {
+                @apply px-4 py-2 rounded-md font-medium transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-opacity-50;
+            }
+            .btn-primary {
+                @apply btn bg-primary-500 text-white hover:bg-primary-600 focus:ring-primary-500;
+            }
+            .btn-secondary {
+                @apply btn bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 focus:ring-gray-500;
+            }
+            .card {
+                @apply bg-white dark:bg-gray-800 rounded-xl shadow-md transition-all duration-300 hover:shadow-lg border border-gray-100 dark:border-gray-700;
+            }
+            .food-item {
+                @apply flex items-center justify-between p-3 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <!-- 头部 -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-primary-600 dark:text-primary-400 flex items-center">
+                <i class="fas fa-utensils mr-3"></i>
+                今晚吃什么
+            </h1>
+            <button id="theme-toggle" class="btn-secondary">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:inline"></i>
+                <span class="ml-2 hidden sm:inline">切换主题</span>
+            </button>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="space-y-6 mb-8">
+            <!-- 随机选择区域 -->
+            <section class="card p-6 text-center space-y-4">
+                <h2 class="text-2xl font-semibold">不知道吃什么？</h2>
+                <p class="text-gray-600 dark:text-gray-400">让我们帮你决定今晚的晚餐！</p>
+                <div id="result-container" class="py-6 px-4 rounded-lg bg-gray-100 dark:bg-gray-700 min-h-[100px] flex items-center justify-center">
+                    <p id="result-text" class="text-xl font-medium">点击下方按钮，随机选择一个美食</p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <button id="random-btn" class="btn-primary">
+                        <i class="fas fa-random mr-2"></i>随机选择
+                    </button>
+                    <button id="reset-btn" class="btn-secondary">
+                        <i class="fas fa-redo mr-2"></i>重置
+                    </button>
+                </div>
+            </section>
+
+            <!-- 食物列表区域 -->
+            <section class="card p-6 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-2xl font-semibold">食物列表</h2>
+                    <span id="food-count" class="px-3 py-1 bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 rounded-full text-sm font-medium">0 个选项</span>
+                </div>
+                
+                <!-- 添加新食物 -->
+                <div class="flex gap-2">
+                    <input type="text" id="new-food" placeholder="添加新的食物选项..." class="w-full px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-all duration-200">
+                    <button id="add-food-btn" class="btn-primary whitespace-nowrap">
+                        <i class="fas fa-plus mr-2"></i>添加
+                    </button>
+                </div>
+
+                <!-- 食物列表 -->
+                <div id="food-list" class="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
+                    <!-- 食物项目将通过JS动态添加 -->
+                </div>
+            </section>
+        </main>
+
+        <!-- 页脚 -->
+        <footer class="text-center text-gray-500 dark:text-gray-400 text-sm py-4">
+            <p>© 2023 今晚吃什么 | 设计灵感来自 Linear App</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // 初始化食物列表
+        const defaultFoods = [
+            '红烧肉', '清蒸鱼', '宫保鸡丁', '水煮肉片', '麻婆豆腐',
+            '糖醋排骨', '鱼香肉丝', '回锅肉', '西红柿炒鸡蛋', '青椒土豆丝',
+            '蒜蓉西兰花', '红烧茄子', '酸辣汤', '小炒牛肉', '蒜苔炒肉',
+            '葱爆羊肉', '干锅土豆片', '香辣虾', '清炒时蔬', '酸菜鱼',
+            '披萨', '汉堡', '意大利面', '寿司', '烤肉',
+            '火锅', '烧烤', '麻辣烫', '冒菜', '炸鸡'
+        ];
+
+        // DOM 元素
+        const foodListEl = document.getElementById('food-list');
+        const foodCountEl = document.getElementById('food-count');
+        const newFoodEl = document.getElementById('new-food');
+        const addFoodBtn = document.getElementById('add-food-btn');
+        const randomBtn = document.getElementById('random-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const resultTextEl = document.getElementById('result-text');
+        const resultContainerEl = document.getElementById('result-container');
+        const themeToggleBtn = document.getElementById('theme-toggle');
+
+        // 存储食物列表
+        let foods = [];
+
+        // 初始化主题
+        function initTheme() {
+            // 检查本地存储中的主题设置
+            const savedTheme = localStorage.getItem('theme');
+            // 检查系统主题偏好
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            // 如果有保存的主题设置，使用它；否则，使用系统偏好
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        // 切换主题
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // 从本地存储加载食物列表
+        function loadFoods() {
+            const savedFoods = localStorage.getItem('foods');
+            if (savedFoods) {
+                foods = JSON.parse(savedFoods);
+            } else {
+                foods = [...defaultFoods];
+                saveFoods();
+            }
+            renderFoodList();
+        }
+
+        // 保存食物列表到本地存储
+        function saveFoods() {
+            localStorage.setItem('foods', JSON.stringify(foods));
+        }
+
+        // 渲染食物列表
+        function renderFoodList() {
+            foodListEl.innerHTML = '';
+            foodCountEl.textContent = `${foods.length} 个选项`;
+
+            if (foods.length === 0) {
+                foodListEl.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400 py-4">暂无食物选项，请添加一些...</p>`;
+                return;
+            }
+
+            foods.forEach((food, index) => {
+                const foodItem = document.createElement('div');
+                foodItem.className = 'food-item';
+                foodItem.innerHTML = `
+                    <span class="font-medium">${food}</span>
+                    <button class="text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors duration-200" data-index="${index}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                foodListEl.appendChild(foodItem);
+
+                // 添加删除按钮事件
+                const deleteBtn = foodItem.querySelector('button');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeFood(index);
+                });
+
+                // 点击食物项目也可以选择它
+                foodItem.addEventListener('click', () => {
+                    selectFood(food);
+                });
+            });
+        }
+
+        // 添加新食物
+        function addFood() {
+            const newFood = newFoodEl.value.trim();
+            if (newFood && !foods.includes(newFood)) {
+                // 添加动画效果
+                const tempEl = document.createElement('div');
+                tempEl.className = 'fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-primary-500 text-white px-4 py-2 rounded-lg z-50 opacity-0';
+                tempEl.textContent = `已添加: ${newFood}`;
+                document.body.appendChild(tempEl);
+
+                // 执行动画
+                setTimeout(() => {
+                    tempEl.classList.add('opacity-100', 'transition-opacity', 'duration-300');
+                    setTimeout(() => {
+                        tempEl.classList.remove('opacity-100');
+                        setTimeout(() => document.body.removeChild(tempEl), 300);
+                    }, 1500);
+                }, 10);
+
+                foods.unshift(newFood); // 添加到列表开头
+                saveFoods();
+                renderFoodList();
+                newFoodEl.value = '';
+            } else if (foods.includes(newFood)) {
+                alert('这个食物已经在列表中了！');
+            }
+        }
+
+        // 删除食物
+        function removeFood(index) {
+            foods.splice(index, 1);
+            saveFoods();
+            renderFoodList();
+        }
+
+        // 随机选择食物
+        function randomSelect() {
+            if (foods.length === 0) {
+                resultTextEl.textContent = '请先添加一些食物选项';
+                return;
+            }
+
+            // 禁用按钮，显示加载动画
+            randomBtn.disabled = true;
+            resultTextEl.innerHTML = '<i class="fas fa-spinner fa-spin text-2xl"></i>';
+            resultContainerEl.classList.add('bg-gray-100', 'dark:bg-gray-700');
+            resultContainerEl.classList.remove('bg-primary-100', 'dark:bg-primary-900');
+
+            // 模拟随机选择过程
+            let count = 0;
+            const duration = 2000; // 总持续时间
+            const interval = 100; // 初始间隔
+            const minInterval = 50; // 最小间隔
+            const maxCount = Math.floor(duration / minInterval); // 最大计数
+
+            const animate = () => {
+                count++;
+                // 计算当前间隔，使其逐渐变慢
+                const currentInterval = Math.max(minInterval, interval * (1 - count / maxCount));
+                
+                // 随机选择一个食物
+                const randomIndex = Math.floor(Math.random() * foods.length);
+                resultTextEl.textContent = foods[randomIndex];
+
+                if (count < maxCount) {
+                    setTimeout(animate, currentInterval);
+                } else {
+                    // 动画结束，显示最终结果
+                    selectFood(foods[randomIndex]);
+                    randomBtn.disabled = false;
+                }
+            };
+
+            setTimeout(animate, interval);
+        }
+
+        // 选择特定食物
+        function selectFood(food) {
+            resultTextEl.textContent = food;
+            resultContainerEl.classList.remove('bg-gray-100', 'dark:bg-gray-700');
+            resultContainerEl.classList.add('bg-primary-100', 'dark:bg-primary-900');
+            
+            // 添加放大动画
+            resultTextEl.classList.add('scale-110', 'transform', 'transition-transform');
+            setTimeout(() => {
+                resultTextEl.classList.remove('scale-110');
+            }, 300);
+        }
+
+        // 重置结果
+        function resetResult() {
+            resultTextEl.textContent = '点击下方按钮，随机选择一个美食';
+            resultContainerEl.classList.add('bg-gray-100', 'dark:bg-gray-700');
+            resultContainerEl.classList.remove('bg-primary-100', 'dark:bg-primary-900');
+        }
+
+        // 事件监听
+        addFoodBtn.addEventListener('click', addFood);
+        newFoodEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addFood();
+        });
+        randomBtn.addEventListener('click', randomSelect);
+        resetBtn.addEventListener('click', resetResult);
+        themeToggleBtn.addEventListener('click', toggleTheme);
+
+        // 初始化
+        initTheme();
+        loadFoods();
+
+        // 添加页面加载动画
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.classList.add('opacity-0');
+            setTimeout(() => {
+                document.body.classList.add('transition-opacity', 'duration-500');
+                document.body.classList.remove('opacity-0');
+            }, 100);
+        });
+    </script>
+</body>
+</html>
